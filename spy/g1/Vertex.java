@@ -2,6 +2,8 @@ package spy.g1;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Vertex {
 
@@ -11,15 +13,16 @@ public class Vertex {
   public boolean known;
   public double distance; // total distance from origin point
   public Vertex prev;
-  public List<Edge> adjacentEdges;
+  public Map<String, Edge> adjacentEdges;
+  public boolean explored;
 
   public Vertex(String name, int x, int y) {
     this.name = name;
     this.x = x;
     this.y = y;
     // by default java sets uninitialized boolean to false and double to 0
-    // hence known == false and dist == 0.0
-    adjacentEdges = new LinkedList<Edge>();
+    // hence known == false and dist == 0.0 and explored == false
+    adjacentEdges = new HashMap<String, Edge>();
     prev = null;
   }
 
@@ -45,8 +48,8 @@ public class Vertex {
     return name.equals(oVertex.name) && x == oVertex.x && y == oVertex.y;
   }
 
-  public void addEdge(Edge edge) {
-    adjacentEdges.add(edge);
+  public void setEdge(Edge edge) {
+    adjacentEdges.put(edge.target.name, edge);
   }
 
   public String toString() {

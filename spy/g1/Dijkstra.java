@@ -66,7 +66,7 @@ public class Dijkstra {
    * @param cost
    *          (double) cost of the edge between vertex u and v
    */
-  public void addEdge(String nameU, String nameV, Double cost) {
+  public void setEdge(String nameU, String nameV, Double cost) {
     if (!vertexNames.containsKey(nameU))
       throw new IllegalArgumentException(nameU + " does not exist. Cannot create edge.");
     if (!vertexNames.containsKey(nameV))
@@ -74,7 +74,7 @@ public class Dijkstra {
     Vertex sourceVertex = vertexNames.get(nameU);
     Vertex targetVertex = vertexNames.get(nameV);
     Edge newEdge = new Edge(sourceVertex, targetVertex, cost);
-    sourceVertex.addEdge(newEdge);
+    sourceVertex.setEdge(newEdge);
   }
 
   /**
@@ -89,8 +89,8 @@ public class Dijkstra {
    *          (double) cost of the edge between vertex u and v
    */
   public void addUndirectedEdge(String nameU, String nameV, double cost) {
-    addEdge(nameU, nameV, cost);
-    addEdge(nameV, nameU, cost);
+    setEdge(nameU, nameV, cost);
+    setEdge(nameV, nameU, cost);
   }
 
   // STUDENT CODE STARTS HERE
@@ -120,8 +120,8 @@ public class Dijkstra {
   public void computeAllEuclideanDistances() {
     Collection<Vertex> vertices = vertexNames.values();
     for(Vertex v : vertices){
-      List<Edge> adjacentEdges = v.adjacentEdges;
-      for(Edge e: adjacentEdges){
+      Map<String, Edge> adjacentEdges = v.adjacentEdges;
+      for(Edge e : adjacentEdges.values()){
         Vertex source = e.source;
         Vertex target = e.target;
         e.distance = computeEuclideanDistance(source.x, source.y, target.x, target.y);
@@ -159,7 +159,7 @@ public class Dijkstra {
        }
 
        closestVertex.known = true;
-       for (Edge e : closestVertex.adjacentEdges) {
+       for (Edge e : closestVertex.adjacentEdges.values()) {
          if (!e.target.known){
            double currentWeight = e.distance;
            if (closestVertex.distance + currentWeight < e.target.distance){
@@ -207,6 +207,57 @@ public class Dijkstra {
      return path;
    }
 
+  public List<Edge> getShortestPathToUnexplored(String s) {
+    LinkedList<Vertex> unknownVertices = new LinkedList<Vertex>();
+    for(Vertex v : vertexNames.values()){
+      v.distance = Double.POSITIVE_INFINITY;
+      v.known = false;
+      unknownVertices.add(v);
+    }
+
+    vertexNames.get(s).distance = 0;
+    vertexNames.get(s).known = true;
+
+    while(unknownVertices.size() != 0){
+
+      double minDistance = Double.POSITIVE_INFINITY;
+      Vertex closestVertex = null;
+
+      for (Vertex v: unknownVertices){
+        if (v.distance < minDistance){
+          minDistance = v.distance;
+          closestVertex = v;
+        }
+      }
+
+      closestVertex.known = true;
+
+      if(!closestVertex.explored) {
+        double finalDistance = 0;
+        path = new LinkedList<Edge>();
+        path = recursivePath(vertexNames.get(closestVertex.name));
+        for(Edge e : path){
+          finalDistance += e.distance;
+        }
+        return path;
+      }
+
+      for (Edge e : closestVertex.adjacentEdges.values()) {
+        if (!e.target.known){
+          double currentWeight = e.distance;
+          if (closestVertex.distance + currentWeight < e.target.distance){
+            e.target.distance = closestVertex.distance + currentWeight;
+            e.target.prev = closestVertex;
+          }
+        }
+      }
+      unknownVertices.remove(closestVertex);
+    }
+
+    // all vertices are explored
+    return null;
+  }
+
 
   // STUDENT CODE ENDS HERE
 
@@ -218,7 +269,7 @@ public class Dijkstra {
       StringBuilder sb = new StringBuilder();
       sb.append(u);
       sb.append(" -> [ ");
-      for (Edge e : vertexNames.get(u).adjacentEdges) {
+      for (Edge e : vertexNames.get(u).adjacentEdges.values()) {
         sb.append(e.target.name);
         sb.append("(");
         sb.append(e.distance);
@@ -234,14 +285,11 @@ public class Dijkstra {
    * A main method that illustrates how the GUI uses Dijkstra.java to
    * read a map and represent it as a graph.
    * You can modify this method to test your code on the command line.
-
   public static void main(String[] argv) throws IOException {
     String vertexFile = "cityxy.txt";
     String edgeFile = "citypairs.txt";
-
     Dijkstra dijkstra = new Dijkstra();
     String line;
-
     // Read in the vertices
     BufferedReader vertexFileBr = new BufferedReader(new FileReader(vertexFile));
     while ((line = vertexFileBr.readLine()) != null) {
@@ -257,7 +305,6 @@ public class Dijkstra {
       dijkstra.addVertex(vertex);
     }
     vertexFileBr.close();
-
     BufferedReader edgeFileBr = new BufferedReader(new FileReader(edgeFile));
     while ((line = edgeFileBr.readLine()) != null) {
       String[] parts = line.split(",");
@@ -268,26 +315,19 @@ public class Dijkstra {
       dijkstra.addUndirectedEdge(parts[0], parts[1], Double.parseDouble(parts[2]));
     }
     edgeFileBr.close();
-
     // Compute distances.
     // This is what happens when you click on the "Compute All Euclidean Distances" button.
     dijkstra.computeAllEuclideanDistances();
-
     // print out an adjacency list representation of the graph
     dijkstra.printAdjacencyList();
-
     // This is what happens when you click on the "Draw Dijkstra's Path" button.
-
     // In the GUI, these are set through the drop-down menus.
     String startCity = "SanFrancisco";
     String endCity = "Boston";
-
     // Get weighted shortest path between start and end city.
     List<Edge> path = dijkstra.getDijkstraPath(startCity, endCity);
-
     System.out.print("Shortest path between "+startCity+" and "+endCity+": ");
     System.out.println(path);
-
   }
   */
 }

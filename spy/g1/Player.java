@@ -404,7 +404,7 @@ public class Player implements spy.sim.Player {
         // moveMode = 3, saw the other one -- trying to reach target
         // moveMode = 4, reached the other one -- go to package to propose path
         // moveMode = 5, done -- just stay put
-        if(this.moves.isEmpty()){
+        //if(this.moves.isEmpty()){
           List<Edge> curPath;
           String source = Integer.toString(loc.x) + "," + Integer.toString(loc.y);
           String target;
@@ -439,12 +439,13 @@ public class Player implements spy.sim.Player {
               default:
                   return new Point(0,0);
           }
-          for(Edge e : curPath){
-            Vertex next = e.target;
-            moves.add(next);
-          }
-        }
-        Vertex nextMove = moves.poll();
+          // for(Edge e : curPath){
+          //   Vertex next = e.target;
+          //   moves.add(next);
+          // }
+        //}
+        //Vertex nextMove = moves.poll();
+        Vertex nextMove = curPath.get(0).target;
 
         return new Point(nextMove.x - loc.x, nextMove.y - loc.y);
     }

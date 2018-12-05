@@ -24,13 +24,10 @@ import spy.sim.Observation;
 public class Player implements spy.sim.Player {
 
     private ArrayList<ArrayList<Record>> records;
-    //private ArrayList<ArrayList<Record>> map;
-    //private HashMap<Point,Boolean> visited;
     private int id;
     private Boolean isSpy;
     private Point loc;
     private HashMap<String,Point> water = new HashMap<String,Point>();
-    //private HashSet existingEdges = new HashSet();
     private Dijkstra djk = new Dijkstra();
 
     private Point packageLocation;
@@ -45,10 +42,14 @@ public class Player implements spy.sim.Player {
     private Boolean waitForCom = false;
     private int waitCounter = 0;
 
+    private HashMap<Integer,Integer> meetups;
+    private static final int minMeetWaitTime = 25;
+
 
     public void init(int n, int id, int t, Point startingPos, List<Point> waterCells, boolean isSpy)
     {
         this.isSpy = isSpy;
+        this.meetups = new HashMap<Integer, Integer>(n-1);
         // Hashmap of water cells for more efficient check
         for (Point w : waterCells){
           int x = w.x;

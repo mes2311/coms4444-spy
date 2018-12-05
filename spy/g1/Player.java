@@ -55,30 +55,23 @@ public class Player implements spy.sim.Player {
           int y = w.y;
           String p = Integer.toString(x) + "," + Integer.toString(y);
           water.put(p, w);
-          // System.out.print(water.containsKey(p));
-          // System.out.println(p);
         }
 
         // Construct Dijkstra graph of land cells
         this.id = id;
         this.records = new ArrayList<ArrayList<Record>>();
         this.ourPath = new ArrayList<Point>();
-        //this.map = new ArrayList<ArrayList<Record>>();
-        //this.visited = new HashMap<Point,Boolean>();
         for (int i = 0; i < 100; i++)
         {
             ArrayList<Record> row = new ArrayList<Record>();
             for (int j = 0; j < 100; j++)
             {
                 String name = Integer.toString(i) + "," + Integer.toString(j);
-                //System.out.print(water.contains(newVertex));
                 if(!water.containsKey(name)){
                   Vertex newVertex = new Vertex(name,i,j);
                   djk.addVertex(newVertex);
-                  // System.out.println(newVertex);
                 }
                 row.add(null);
-                //visited.put(new Point(i,j),false);
             }
             this.records.add(row);
         }
@@ -121,8 +114,8 @@ public class Player implements spy.sim.Player {
                 Vertex[] key = {target, source};
                 double weight = (k%2==0) ? 3 : 2;
                 if (isMuddy) {
-                  if (moveMode<2 || moveMode>3) {weight *= 2;}
-                  if (moveMode>=2){weight = Double.POSITIVE_INFINITY;}
+                  if (moveMode==0 || moveMode==1 || moveMode==4) {weight *= 2;}
+                  if (moveMode==2 || moveMode==3 || moveMode==5) {weight = Double.POSITIVE_INFINITY;}
                 }
                 djk.setEdge(target.name, source.name, weight);
                 //existingEdges.add(key);
@@ -164,7 +157,6 @@ public class Player implements spy.sim.Player {
                 record = new Record(p, status.getC(), status.getPT(), observations);
                 records.get(p.x).set(p.y, record);
             }
-            //map.get(p.x).set(p.y, new Record(p, status.getC(), status.getPT(), new ArrayList<Observation>()));
             record.getObservations().add(new Observation(this.id, Simulator.getElapsedT()));
             update(record);
         }
@@ -302,18 +294,21 @@ public class Player implements spy.sim.Player {
                 case 1:
                     moveMode = 2;
                     // update graph so all muddy edges are infinite
-                    for (Vertex source : djk.getVertices()){
-                        Record r = records.get(source.x).get(source.y);
-                        if(r!=null && r.getC()==1) {
-                            setIncomingEdges(source, true);
-                        }
-                    }
+                    setAllMuddy();
                     break;
                 case 3:
-                    if(atTarget) {moveMode = 4;}
+                    if(atTarget) {
+                        moveMode = 4;
+                        // update graph so all muddy edges are finite
+                        setAllMuddy();
+                    }
                     break;
                 case 4:
-                    if(atPackage) {moveMode = 5;}
+                    if(atPackage) {
+                        moveMode = 5;
+                        // update graph so all muddy edges are infinite
+                        setAllMuddy();
+                    }
                     break;
                 default:
                     break;
@@ -321,7 +316,16 @@ public class Player implements spy.sim.Player {
         }
     }
 
- public List<Point> proposePath()
+    private void setAllMuddy() {
+        for (Vertex source : djk.getVertices()){
+            Record r = records.get(source.x).get(source.y);
+            if(r!=null && r.getC()==1) {
+                setIncomingEdges(source, true);
+            }
+        }
+    }
+
+    public List<Point> proposePath()
     {
         if (packageLocation != null && targetLocation != null) {
           //update all map weights before proposal

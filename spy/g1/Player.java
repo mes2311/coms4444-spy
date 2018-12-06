@@ -343,24 +343,66 @@ public class Player implements spy.sim.Player {
         }
     }
 
-    public List<Point> proposePath()
+//     public List<Point> proposePath()
+//     {
+//         String packageLoc;
+//         String targetLoc;
+//         packageLoc = Integer.toString(packageLocation.x) + "," + Integer.toString(packageLocation.y);
+//         targetLoc = Integer.toString(targetLocation.x) + "," + Integer.toString(targetLocation.y);
+//         List<Edge> validPath = djk.getDijkstraPath(packageLoc,targetLoc);
+//         for(int i=0;i<validPath.size();i++){
+//             Vertex nextVertex = validPath.get(i).target;
+//             Point nextPoint = new Point(nextVertex.x,nextVertex.y);
+//             System.out.println("step"+i+nextPoint);
+//             this.ourPath.add(nextPoint);
+//         }
+//         if(ourPath.size()>1){
+//             return ourPath;
+//         }
+//         return null;
+//     }
+ public List<Point> proposePath()
     {
-        String packageLoc;
-        String targetLoc;
-        packageLoc = Integer.toString(packageLocation.x) + "," + Integer.toString(packageLocation.y);
-        targetLoc = Integer.toString(targetLocation.x) + "," + Integer.toString(targetLocation.y);
-        List<Edge> validPath = djk.getDijkstraPath(packageLoc,targetLoc);
-        for(int i=0;i<validPath.size();i++){
-            Vertex nextVertex = validPath.get(i).target;
-            Point nextPoint = new Point(nextVertex.x,nextVertex.y);
-            System.out.println("step"+i+nextPoint);
-            this.ourPath.add(nextPoint);
+            String packageLoc;
+            String targetLoc;
+            String currentLoc;
+            int i=0;
+
+            packageLoc = Integer.toString(packageLocation.x) + "," + Integer.toString(packageLocation.y);
+            targetLoc = Integer.toString(targetLocation.x) + "," + Integer.toString(targetLocation.y);
+            List<Edge> validPath = djk.getDijkstraPath(packageLoc,targetLoc);
+
+            while(i<validPath.size()){
+              Vertex nextVertex = validPath.get(i).target;
+              Vertex preVertex = validPath.get(i).source;
+              Point nextPoint = new Point(nextVertex.x,nextVertex.y);
+              // if current vertex is muddy cell, search surrouding 4 cells
+              if(this.records.get(nextVertex.x).get(nextVertex.y).getC()==1){
+                for(int j=1;j>-2;j--){
+                  for(int k=1;k>-2;k--){
+                    if(this.records.get(preVertex.x+j).get(preVertex.x+k).getC()==0){
+                      nextPoint = new Point(preVertex.x+j,preVertex.x+k);
+                      i=-1;
+                      break;
+                      }
+                  }
+                }
+                // reschedule the path
+                currentLoc = Integer.toString(nextPoint.x) + "," + Integer.toString(nextPoint.y);
+                validPath = djk.getDijkstraPath(currentLoc,targetLoc);
+              }
+              
+              i=i+1;
+              this.ourPath.add(nextPoint);
+              System.out.println("step"+i+nextPoint+this.records.get(nextPoint.x).get(nextPoint.y).getC());
+            }
+
+            if(ourPath.size()>1){
+                return ourPath;
+            }
+            return null;
         }
-        if(ourPath.size()>1){
-            return ourPath;
-        }
-        return null;
-    }
+
 
     public List<Integer> getVotes(HashMap<Integer, List<Point>> paths)
     {

@@ -35,16 +35,15 @@ public class Player implements spy.sim.Player {
     private int moveMode;
     private boolean findPackage, findTarget;
     private List<Point> ourPath;
-    private Queue<Vertex> moves = new LinkedList<>();
+
     private HashMap<Integer, Point> allSoldiers = new HashMap<Integer, Point>();
     private HashMap<Integer,Integer> meetups = new HashMap<Integer, Integer>();
     private static final int minMeetWaitTime = 50;
     private Boolean waitForCom = false;
     private int waitCounter = 0;
 
-    private HashMap<Integer,Integer> meetups;
-    private static final int minMeetWaitTime = 25;
-
+    private LinkedList<Vertex> moves  = new LinkedList<Vertex>();
+    private Vertex curTarget = null;
 
     public void init(int n, int id, int t, Point startingPos, List<Point> waterCells, boolean isSpy)
     {
@@ -162,41 +161,48 @@ public class Player implements spy.sim.Player {
             update(record);
         }
         // Observed soldiers
-        if(!this.isSpy){
-          Boolean worthIt = false;
-          if(!allSoldiers.isEmpty()){
-            int lowestID = this.id;
-            Point toVisit = null;
-            for (Map.Entry<Integer, Point> entry: allSoldiers.entrySet()){
-              int id = entry.getKey();
-              Point soldierLoc = entry.getValue();
-              if (id < lowestID){
-                lowestID = id;
-                toVisit = soldierLoc;
-              }
-              if (Simulator.getElapsedT() - meetups.getOrDefault(id, 0) > minMeetWaitTime){
-                worthIt = true;
-              }
-            }
-            if(worthIt && waitCounter < 5){
-              this.moves.clear();
-              waitCounter += 1;
-              if(toVisit == null) {
-                waitForCom = true;
-                //System.out.println("Waiting for player");
-              }
-              else
-              {
-                //System.out.println("Going to visit player " + lowestID);
-                String source = Integer.toString(loc.x)+","+Integer.toString(loc.y);
-                String target = Integer.toString(toVisit.x)+","+Integer.toString(toVisit.y);
-                List<Edge> curPath = djk.getDijkstraPath(source, target);
-                for(Edge e : curPath) {
-                  Vertex next = e.target;
-                  moves.add(next);
+        if(!this.isSpy) {
+            Boolean worthIt = false;
+            if(!allSoldiers.isEmpty()){
+                int lowestID = this.id;
+                Point toVisit = null;
+                for (Map.Entry<Integer, Point> entry: allSoldiers.entrySet()){
+                    int id = entry.getKey();
+                    Point soldierLoc = entry.getValue();
+                    if (id < lowestID){
+                        lowestID = id;
+                        toVisit = soldierLoc;
+                    }
+                    if (Simulator.getElapsedT() - meetups.getOrDefault(id, 0) > minMeetWaitTime){
+                        worthIt = true;
+                    }
+                }
+
+              if(worthIt && waitCounter < 5){
+                this.moves.clear();
+                waitCounter += 1;
+                if(toVisit == null) {
+                  waitForCom = true;
+                  //System.out.println("Waiting for player");
+                }
+                else
+                {
+                  if(this.curTarget == null || moves.isEmpty()) {
+                      //System.out.println("Going to visit player " + lowestID);
+                      String source = Integer.toString(loc.x)+","+Integer.toString(loc.y);
+                      String target = Integer.toString(toVisit.x)+","+Integer.toString(toVisit.y);
+                      List<Edge> curPath = djk.getDijkstraPath(source, target);
+                      if(!curPath.isEmpty()) {
+                        this.moves = new LinkedList<Vertex>();
+                        for(Edge e : curPath) {
+                          Vertex next = e.target;
+                          moves.add(next);
+                        }
+                        this.curTarget = moves.getLast();
+                      }
+                  }
                 }
               }
-            }
           }
         }
     }
@@ -266,6 +272,9 @@ public class Player implements spy.sim.Player {
                         moveMode = 4;
                         // found target first and just discovered package
                         // just go to package and we're done
+
+                        // update graph so all muddy edges are finite
+                        setAllMuddy();
                     }
                     break;
                 default:
@@ -279,6 +288,13 @@ public class Player implements spy.sim.Player {
                 this.targetLocation = p;
             }
         }
+
+        // update curTarget
+        if(p.equals(curTarget)) {
+            // target explored -- need a new one
+            this.curTarget = null;
+        }
+
         // update the graph to reflect new information
         String name = Integer.toString(p.x) + "," + Integer.toString(p.y);
         if(!water.containsKey(name)) {
@@ -405,7 +421,7 @@ public class Player implements spy.sim.Player {
         // moveMode = 3, saw the other one -- trying to reach target
         // moveMode = 4, reached the other one -- go to package to propose path
         // moveMode = 5, done -- just stay put
-        //if(this.moves.isEmpty()){
+        if(this.curTarget == null || moves.isEmpty()) {
           List<Edge> curPath;
           String source = Integer.toString(loc.x) + "," + Integer.toString(loc.y);
           String target;
@@ -440,13 +456,18 @@ public class Player implements spy.sim.Player {
               default:
                   return new Point(0,0);
           }
-          // for(Edge e : curPath){
-          //   Vertex next = e.target;
-          //   moves.add(next);
-          // }
-        //}
-        //Vertex nextMove = moves.poll();
-        Vertex nextMove = curPath.get(0).target;
+
+          this.moves = new LinkedList<Vertex>();
+          for(Edge e : curPath){
+            Vertex next = e.target;
+            moves.add(next);
+          }
+          this.curTarget = moves.getLast();
+          //System.err.println("updated target");
+        }
+        //System.err.println(moves.size());
+        Vertex nextMove = moves.poll();
+        //Vertex nextMove = curPath.get(0).target;
 
         return new Point(nextMove.x - loc.x, nextMove.y - loc.y);
     }

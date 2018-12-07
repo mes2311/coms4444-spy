@@ -215,6 +215,8 @@ public class Player implements spy.sim.Player {
         ArrayList<Record> toSend = new ArrayList<Record>();
 
         if (Simulator.getElapsedT() - meetups.getOrDefault(id, 0) > minMeetWaitTime) {
+            waitCounter = 0;
+            waitForCom = false;
             for (ArrayList<Record> row : records)
             {
                 for (Record record : row)
@@ -226,7 +228,8 @@ public class Player implements spy.sim.Player {
                 }
             }
 
-            meetups.put(id, Simulator.getElapsedT());
+            //meetups.put(id, Simulator.getElapsedT());
+
         }
 
         return toSend;
@@ -234,7 +237,8 @@ public class Player implements spy.sim.Player {
 
     public void receiveRecords(int id, List<Record> records)
     {
-      if(!this.isSpy){
+      if(!this.isSpy && 
+        Simulator.getElapsedT() - meetups.getOrDefault(id, 0) > minMeetWaitTime){
         waitCounter = 0;
         waitForCom = false;
           for(Record rec: records) {
@@ -251,7 +255,7 @@ public class Player implements spy.sim.Player {
             record.getObservations().add(new Observation(this.id, Simulator.getElapsedT()));
             update(rec);
           }
-      }
+        }
     }
 
 
@@ -404,17 +408,17 @@ public class Player implements spy.sim.Player {
         if(waitForCom){
           return new Point(0,0);
         }
-        if(!this.moves.isEmpty()){
-          Vertex curNext = moves.peek();
-          if(moveMode >= 2 && moveMode <=4){
-            Record rec = records.get(curNext.x).get(curNext.y);
-            int muddy = rec.getC();
-            if(muddy == 1){
-              this.moves.clear();
-              System.out.println("Clearing queue");
-            }
-          }
-        }
+        // if(!this.moves.isEmpty()){
+        //   Vertex curNext = moves.peek();
+        //   if(moveMode >= 2 && moveMode <=4){
+        //     Record rec = records.get(curNext.x).get(curNext.y);
+        //     int muddy = rec.getC();
+        //     if(muddy == 1){
+        //       this.moves.clear();
+        //       System.out.println("Clearing queue");
+        //     }
+        //   }
+        // }
         // moveMode = 0, initial exploration
         // moveMode = 1, saw package or target
         // moveMode = 2, reached package or target -- looking for other one

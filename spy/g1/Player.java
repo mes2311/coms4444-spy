@@ -138,6 +138,8 @@ public class Player implements spy.sim.Player {
           waitCounter = 0;
         }
 
+        waitForCom = false;
+
         // Clear observed soldiers
         allSoldiers.clear();
         for (Map.Entry<Point, CellStatus> entry : statuses.entrySet())
@@ -183,16 +185,17 @@ public class Player implements spy.sim.Player {
           if(worthIt && waitCounter < 5){
             this.moves.clear();
             waitCounter += 1;
-            if(toVisit == null){
+            if(toVisit == null) {
               waitForCom = true;
               //System.out.println("Waiting for player");
             }
-            else{
+            else
+            {
               //System.out.println("Going to visit player " + lowestID);
               String source = Integer.toString(loc.x)+","+Integer.toString(loc.y);
               String target = Integer.toString(toVisit.x)+","+Integer.toString(toVisit.y);
               List<Edge> curPath = djk.getDijkstraPath(source, target);
-              for(Edge e : curPath){
+              for(Edge e : curPath) {
                 Vertex next = e.target;
                 moves.add(next);
               }
@@ -311,35 +314,37 @@ public class Player implements spy.sim.Player {
 
  public List<Point> proposePath()
     {
-        //update all map weights before proposal
-        for(int i = 0; i<100; i++){
-          for(int j = 0; j<100; j++){
-            Record rec = records.get(i).get(j);
-            if(rec != null){
-              int muddy = rec.getC();
-              if(muddy == 1){
-                String name = Integer.toString(i) + "," + Integer.toString(j);
-                Vertex v = djk.getVertex(name);
-                setIncomingEdges(v, true);
+        if (packageLocation != null && targetLocation != null) {
+          //update all map weights before proposal
+          for(int i = 0; i<100; i++){
+            for(int j = 0; j<100; j++){
+              Record rec = records.get(i).get(j);
+              if(rec != null){
+                int muddy = rec.getC();
+                if(muddy == 1){
+                  String name = Integer.toString(i) + "," + Integer.toString(j);
+                  Vertex v = djk.getVertex(name);
+                  setIncomingEdges(v, true);
+                }
               }
             }
           }
-        }
 
-        String packageLoc;
-        String targetLoc;
-        packageLoc = Integer.toString(packageLocation.x) + "," + Integer.toString(packageLocation.y);
-        targetLoc = Integer.toString(targetLocation.x) + "," + Integer.toString(targetLocation.y);
+          String packageLoc;
+          String targetLoc;
+          packageLoc = Integer.toString(packageLocation.x) + "," + Integer.toString(packageLocation.y);
+          targetLoc = Integer.toString(targetLocation.x) + "," + Integer.toString(targetLocation.y);
 
-        List<Edge> validPath = djk.getDijkstraPath(packageLoc,targetLoc);
-        for(int i=0;i<validPath.size();i++){
-            Vertex nextVertex = validPath.get(i).target;
-            Point nextPoint = new Point(nextVertex.x,nextVertex.y);
-            System.out.println("step"+i+nextPoint);
-            this.ourPath.add(nextPoint);
-        }
-        if(ourPath.size()>1){
-            return ourPath;
+          List<Edge> validPath = djk.getDijkstraPath(packageLoc,targetLoc);
+          for(int i=0;i<validPath.size();i++){
+              Vertex nextVertex = validPath.get(i).target;
+              Point nextPoint = new Point(nextVertex.x,nextVertex.y);
+              System.out.println("step"+i+nextPoint);
+              this.ourPath.add(nextPoint);
+          }
+          if(ourPath.size()>1){
+              return ourPath;
+          }
         }
 
         return null;

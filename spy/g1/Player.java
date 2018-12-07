@@ -39,9 +39,10 @@ public class Player implements spy.sim.Player {
     private List<Point> ourPath;
     private Queue<Vertex> moves = new LinkedList<>();
     private HashMap<Integer, Point> allSoldiers = new HashMap<Integer, Point>();
-
-    private HashMap<Integer,Integer> meetups;
-    private static final int minMeetWaitTime = 25;
+    private HashMap<Integer,Integer> meetups = new HashMap<Integer, Integer>();
+    private static final int minMeetWaitTime = 50;
+    private Boolean waitForCom = false;
+    private int waitCounter = 0;
 
 
     public void init(int n, int id, int t, Point startingPos, List<Point> waterCells, boolean isSpy)
@@ -133,15 +134,22 @@ public class Player implements spy.sim.Player {
         // update location
         this.loc = loc;
 
+        if(Simulator.getElapsedT() % 50 == 0){
+          waitCounter = 0;
+        }
+
         // Clear observed soldiers
         allSoldiers.clear();
         for (Map.Entry<Point, CellStatus> entry : statuses.entrySet())
         {
             Point p = entry.getKey();
+            //System.out.println(Integer.toString(p.x) + "," + Integer.toString(p.y));
             CellStatus status = entry.getValue();
             ArrayList<Integer> cellSoldiers = status.getPresentSoldiers();
             for(int soldierID : cellSoldiers){
-              allSoldiers.put(soldierID, p);
+              if(soldierID != this.id){
+                allSoldiers.put(soldierID, p);
+              }
             }
 
             // record the data learned
@@ -157,6 +165,7 @@ public class Player implements spy.sim.Player {
             update(record);
         }
         // Observed soldiers
+        Boolean worthIt = false;
         if(!allSoldiers.isEmpty()){
           int lowestID = this.id;
           Point toVisit = null;
@@ -167,7 +176,29 @@ public class Player implements spy.sim.Player {
               lowestID = id;
               toVisit = soldierLoc;
             }
+            if (Simulator.getElapsedT() - meetups.getOrDefault(id, 0) > minMeetWaitTime){
+              worthIt = true;
+            }
           }
+          if(worthIt && waitCounter < 5){
+            this.moves.clear();
+            waitCounter += 1;
+            if(toVisit == null){
+              waitForCom = true;
+              System.out.println("Waiting for player");
+            }
+            else{
+              System.out.println("Going to visit player " + lowestID);
+              String source = Integer.toString(loc.x)+","+Integer.toString(loc.y);
+              String target = Integer.toString(toVisit.x)+","+Integer.toString(toVisit.y);
+              List<Edge> curPath = djk.getDijkstraPath(source, target);
+              for(Edge e : curPath){
+                Vertex next = e.target;
+                moves.add(next);
+              }
+            }
+          }
+
         }
     }
 
@@ -175,7 +206,7 @@ public class Player implements spy.sim.Player {
     {
         ArrayList<Record> toSend = new ArrayList<Record>();
 
-        if (Simulator.getElapsedT() - meetups.getOrDefault(id, 0) < minMeetWaitTime) {
+        if (Simulator.getElapsedT() - meetups.getOrDefault(id, 0) > minMeetWaitTime) {
             for (ArrayList<Record> row : records)
             {
                 for (Record record : row)
@@ -195,6 +226,8 @@ public class Player implements spy.sim.Player {
 
     public void receiveRecords(int id, List<Record> records)
     {
+      waitCounter = 0;
+      waitForCom = false;
         for(Record rec: records) {
         	// record the data learned
         	Point p = rec.getLoc();
@@ -328,8 +361,11 @@ public class Player implements spy.sim.Player {
     // runs algorithms to decide which move to make based on the current state
     public Point getMove()
     {
-        System.out.println(moveMode);
+        //System.out.println(moveMode);
         //System.err.println(moveMode);
+        if(waitForCom){
+          return new Point(0,0);
+        }
         if(!this.moves.isEmpty()){
           Vertex curNext = moves.peek();
           if(moveMode >= 2 && moveMode <=4){

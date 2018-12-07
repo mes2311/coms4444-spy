@@ -27,6 +27,7 @@ public class Player implements spy.sim.Player {
     //private ArrayList<ArrayList<Record>> map;
     //private HashMap<Point,Boolean> visited;
     private int id;
+    private Boolean isSpy;
     private Point loc;
     private HashMap<String,Point> water = new HashMap<String,Point>();
     //private HashSet existingEdges = new HashSet();
@@ -47,6 +48,7 @@ public class Player implements spy.sim.Player {
 
     public void init(int n, int id, int t, Point startingPos, List<Point> waterCells, boolean isSpy)
     {
+        this.isSpy = isSpy;
         // Hashmap of water cells for more efficient check
         for (Point w : waterCells){
           int x = w.x;
@@ -167,41 +169,42 @@ public class Player implements spy.sim.Player {
             update(record);
         }
         // Observed soldiers
-        Boolean worthIt = false;
-        if(!allSoldiers.isEmpty()){
-          int lowestID = this.id;
-          Point toVisit = null;
-          for (Map.Entry<Integer, Point> entry: allSoldiers.entrySet()){
-            int id = entry.getKey();
-            Point soldierLoc = entry.getValue();
-            if (id < lowestID){
-              lowestID = id;
-              toVisit = soldierLoc;
+        if(!this.isSpy){
+          Boolean worthIt = false;
+          if(!allSoldiers.isEmpty()){
+            int lowestID = this.id;
+            Point toVisit = null;
+            for (Map.Entry<Integer, Point> entry: allSoldiers.entrySet()){
+              int id = entry.getKey();
+              Point soldierLoc = entry.getValue();
+              if (id < lowestID){
+                lowestID = id;
+                toVisit = soldierLoc;
+              }
+              if (Simulator.getElapsedT() - meetups.getOrDefault(id, 0) > minMeetWaitTime){
+                worthIt = true;
+              }
             }
-            if (Simulator.getElapsedT() - meetups.getOrDefault(id, 0) > minMeetWaitTime){
-              worthIt = true;
-            }
-          }
-          if(worthIt && waitCounter < 5){
-            this.moves.clear();
-            waitCounter += 1;
-            if(toVisit == null) {
-              waitForCom = true;
-              //System.out.println("Waiting for player");
-            }
-            else
-            {
-              //System.out.println("Going to visit player " + lowestID);
-              String source = Integer.toString(loc.x)+","+Integer.toString(loc.y);
-              String target = Integer.toString(toVisit.x)+","+Integer.toString(toVisit.y);
-              List<Edge> curPath = djk.getDijkstraPath(source, target);
-              for(Edge e : curPath) {
-                Vertex next = e.target;
-                moves.add(next);
+            if(worthIt && waitCounter < 5){
+              this.moves.clear();
+              waitCounter += 1;
+              if(toVisit == null) {
+                waitForCom = true;
+                //System.out.println("Waiting for player");
+              }
+              else
+              {
+                //System.out.println("Going to visit player " + lowestID);
+                String source = Integer.toString(loc.x)+","+Integer.toString(loc.y);
+                String target = Integer.toString(toVisit.x)+","+Integer.toString(toVisit.y);
+                List<Edge> curPath = djk.getDijkstraPath(source, target);
+                for(Edge e : curPath) {
+                  Vertex next = e.target;
+                  moves.add(next);
+                }
               }
             }
           }
-
         }
     }
 

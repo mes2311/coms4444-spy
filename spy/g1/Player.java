@@ -40,6 +40,9 @@ public class Player implements spy.sim.Player {
     private Queue<Vertex> moves = new LinkedList<>();
     private HashMap<Integer, Point> allSoldiers = new HashMap<Integer, Point>();
 
+    private HashMap<Integer,Integer> meetups;
+    private static final int minMeetWaitTime = 25;
+
 
     public void init(int n, int id, int t, Point startingPos, List<Point> waterCells, boolean isSpy)
     {
@@ -171,16 +174,22 @@ public class Player implements spy.sim.Player {
     public List<Record> sendRecords(int id)
     {
         ArrayList<Record> toSend = new ArrayList<Record>();
-        for (ArrayList<Record> row : records)
-        {
-            for (Record record : row)
+
+        if (Simulator.getElapsedT() - meetups.getOrDefault(id, 0) < minMeetWaitTime) {
+            for (ArrayList<Record> row : records)
             {
-                if (record != null)
+                for (Record record : row)
                 {
-                    toSend.add(record);
+                    if (record != null)
+                    {
+                        toSend.add(record);
+                    }
                 }
             }
+
+            meetups.put(id, Simulator.getElapsedT());
         }
+
         return toSend;
     }
 

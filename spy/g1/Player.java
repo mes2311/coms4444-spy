@@ -24,13 +24,10 @@ import spy.sim.Observation;
 public class Player implements spy.sim.Player {
 
     private ArrayList<ArrayList<Record>> records;
-    //private ArrayList<ArrayList<Record>> map;
-    //private HashMap<Point,Boolean> visited;
     private int id;
     private Boolean isSpy;
     private Point loc;
     private HashMap<String,Point> water = new HashMap<String,Point>();
-    //private HashSet existingEdges = new HashSet();
     private Dijkstra djk = new Dijkstra();
 
     private Point packageLocation;
@@ -38,47 +35,43 @@ public class Player implements spy.sim.Player {
     private int moveMode;
     private boolean findPackage, findTarget;
     private List<Point> ourPath;
-    private Queue<Vertex> moves = new LinkedList<>();
+
     private HashMap<Integer, Point> allSoldiers = new HashMap<Integer, Point>();
     private HashMap<Integer,Integer> meetups = new HashMap<Integer, Integer>();
     private static final int minMeetWaitTime = 50;
     private Boolean waitForCom = false;
     private int waitCounter = 0;
 
+    private LinkedList<Vertex> moves  = new LinkedList<Vertex>();
+    private Vertex curTarget = null;
 
     public void init(int n, int id, int t, Point startingPos, List<Point> waterCells, boolean isSpy)
     {
         this.isSpy = isSpy;
+        this.meetups = new HashMap<Integer, Integer>(n-1);
         // Hashmap of water cells for more efficient check
         for (Point w : waterCells){
           int x = w.x;
           int y = w.y;
           String p = Integer.toString(x) + "," + Integer.toString(y);
           water.put(p, w);
-          // System.out.print(water.containsKey(p));
-          // System.out.println(p);
         }
 
         // Construct Dijkstra graph of land cells
         this.id = id;
         this.records = new ArrayList<ArrayList<Record>>();
         this.ourPath = new ArrayList<Point>();
-        //this.map = new ArrayList<ArrayList<Record>>();
-        //this.visited = new HashMap<Point,Boolean>();
         for (int i = 0; i < 100; i++)
         {
             ArrayList<Record> row = new ArrayList<Record>();
             for (int j = 0; j < 100; j++)
             {
                 String name = Integer.toString(i) + "," + Integer.toString(j);
-                //System.out.print(water.contains(newVertex));
                 if(!water.containsKey(name)){
                   Vertex newVertex = new Vertex(name,i,j);
                   djk.addVertex(newVertex);
-                  // System.out.println(newVertex);
                 }
                 row.add(null);
-                //visited.put(new Point(i,j),false);
             }
             this.records.add(row);
         }
@@ -121,8 +114,8 @@ public class Player implements spy.sim.Player {
                 Vertex[] key = {target, source};
                 double weight = (k%2==0) ? 3 : 2;
                 if (isMuddy) {
-                  if (moveMode<2 || moveMode>3) {weight *= 2;}
-                  if (moveMode>=2){weight = Double.POSITIVE_INFINITY;}
+                  if (moveMode==0 || moveMode==1 || moveMode==4) {weight *= 2;}
+                  if (moveMode==2 || moveMode==3 || moveMode==5) {weight = Double.POSITIVE_INFINITY;}
                 }
                 djk.setEdge(target.name, source.name, weight);
                 //existingEdges.add(key);
@@ -164,46 +157,52 @@ public class Player implements spy.sim.Player {
                 record = new Record(p, status.getC(), status.getPT(), observations);
                 records.get(p.x).set(p.y, record);
             }
-            //map.get(p.x).set(p.y, new Record(p, status.getC(), status.getPT(), new ArrayList<Observation>()));
             record.getObservations().add(new Observation(this.id, Simulator.getElapsedT()));
             update(record);
         }
         // Observed soldiers
-        if(!this.isSpy){
-          Boolean worthIt = false;
-          if(!allSoldiers.isEmpty()){
-            int lowestID = this.id;
-            Point toVisit = null;
-            for (Map.Entry<Integer, Point> entry: allSoldiers.entrySet()){
-              int id = entry.getKey();
-              Point soldierLoc = entry.getValue();
-              if (id < lowestID){
-                lowestID = id;
-                toVisit = soldierLoc;
-              }
-              if (Simulator.getElapsedT() - meetups.getOrDefault(id, 0) > minMeetWaitTime){
-                worthIt = true;
-              }
-            }
-            if(worthIt && waitCounter < 5){
-              this.moves.clear();
-              waitCounter += 1;
-              if(toVisit == null) {
-                waitForCom = true;
-                //System.out.println("Waiting for player");
-              }
-              else
-              {
-                //System.out.println("Going to visit player " + lowestID);
-                String source = Integer.toString(loc.x)+","+Integer.toString(loc.y);
-                String target = Integer.toString(toVisit.x)+","+Integer.toString(toVisit.y);
-                List<Edge> curPath = djk.getDijkstraPath(source, target);
-                for(Edge e : curPath) {
-                  Vertex next = e.target;
-                  moves.add(next);
+        if(!this.isSpy) {
+            Boolean worthIt = false;
+            if(!allSoldiers.isEmpty()){
+                int lowestID = this.id;
+                Point toVisit = null;
+                for (Map.Entry<Integer, Point> entry: allSoldiers.entrySet()){
+                    int id = entry.getKey();
+                    Point soldierLoc = entry.getValue();
+                    if (id < lowestID){
+                        lowestID = id;
+                        toVisit = soldierLoc;
+                    }
+                    if (Simulator.getElapsedT() - meetups.getOrDefault(id, 0) > minMeetWaitTime){
+                        worthIt = true;
+                    }
+                }
+
+              if(worthIt && waitCounter < 5){
+                this.moves.clear();
+                waitCounter += 1;
+                if(toVisit == null) {
+                  waitForCom = true;
+                  //System.out.println("Waiting for player");
+                }
+                else
+                {
+                  if(this.curTarget == null || moves.isEmpty()) {
+                      //System.out.println("Going to visit player " + lowestID);
+                      String source = Integer.toString(loc.x)+","+Integer.toString(loc.y);
+                      String target = Integer.toString(toVisit.x)+","+Integer.toString(toVisit.y);
+                      List<Edge> curPath = djk.getDijkstraPath(source, target);
+                      if(!curPath.isEmpty()) {
+                        this.moves = new LinkedList<Vertex>();
+                        for(Edge e : curPath) {
+                          Vertex next = e.target;
+                          moves.add(next);
+                        }
+                        this.curTarget = moves.getLast();
+                      }
+                  }
                 }
               }
-            }
           }
         }
     }
@@ -216,6 +215,8 @@ public class Player implements spy.sim.Player {
         ArrayList<Record> toSend = new ArrayList<Record>();
 
         if (Simulator.getElapsedT() - meetups.getOrDefault(id, 0) > minMeetWaitTime) {
+            waitCounter = 0;
+            waitForCom = false;
             for (ArrayList<Record> row : records)
             {
                 for (Record record : row)
@@ -227,7 +228,8 @@ public class Player implements spy.sim.Player {
                 }
             }
 
-            meetups.put(id, Simulator.getElapsedT());
+            //meetups.put(id, Simulator.getElapsedT());
+
         }
 
         return toSend;
@@ -235,7 +237,8 @@ public class Player implements spy.sim.Player {
 
     public void receiveRecords(int id, List<Record> records)
     {
-      if(!this.isSpy){
+      if(!this.isSpy && 
+        Simulator.getElapsedT() - meetups.getOrDefault(id, 0) > minMeetWaitTime){
         waitCounter = 0;
         waitForCom = false;
           for(Record rec: records) {
@@ -252,7 +255,7 @@ public class Player implements spy.sim.Player {
             record.getObservations().add(new Observation(this.id, Simulator.getElapsedT()));
             update(rec);
           }
-      }
+        }
     }
 
 
@@ -273,6 +276,9 @@ public class Player implements spy.sim.Player {
                         moveMode = 4;
                         // found target first and just discovered package
                         // just go to package and we're done
+
+                        // update graph so all muddy edges are finite
+                        setAllMuddy();
                     }
                     break;
                 default:
@@ -286,6 +292,13 @@ public class Player implements spy.sim.Player {
                 this.targetLocation = p;
             }
         }
+
+        // update curTarget
+        if(p.equals(curTarget)) {
+            // target explored -- need a new one
+            this.curTarget = null;
+        }
+
         // update the graph to reflect new information
         String name = Integer.toString(p.x) + "," + Integer.toString(p.y);
         if(!water.containsKey(name)) {
@@ -302,18 +315,21 @@ public class Player implements spy.sim.Player {
                 case 1:
                     moveMode = 2;
                     // update graph so all muddy edges are infinite
-                    for (Vertex source : djk.getVertices()){
-                        Record r = records.get(source.x).get(source.y);
-                        if(r!=null && r.getC()==1) {
-                            setIncomingEdges(source, true);
-                        }
-                    }
+                    setAllMuddy();
                     break;
                 case 3:
-                    if(atTarget) {moveMode = 4;}
+                    if(atTarget) {
+                        moveMode = 4;
+                        // update graph so all muddy edges are finite
+                        setAllMuddy();
+                    }
                     break;
                 case 4:
-                    if(atPackage) {moveMode = 5;}
+                    if(atPackage) {
+                        moveMode = 5;
+                        // update graph so all muddy edges are infinite
+                        setAllMuddy();
+                    }
                     break;
                 default:
                     break;
@@ -321,7 +337,16 @@ public class Player implements spy.sim.Player {
         }
     }
 
- public List<Point> proposePath()
+    private void setAllMuddy() {
+        for (Vertex source : djk.getVertices()){
+            Record r = records.get(source.x).get(source.y);
+            if(r!=null && r.getC()==1) {
+                setIncomingEdges(source, true);
+            }
+        }
+    }
+
+    public List<Point> proposePath()
     {
         if (packageLocation != null && targetLocation != null) {
           //update all map weights before proposal
@@ -383,24 +408,24 @@ public class Player implements spy.sim.Player {
         if(waitForCom){
           return new Point(0,0);
         }
-        if(!this.moves.isEmpty()){
-          Vertex curNext = moves.peek();
-          if(moveMode >= 2 && moveMode <=4){
-            Record rec = records.get(curNext.x).get(curNext.y);
-            int muddy = rec.getC();
-            if(muddy == 1){
-              this.moves.clear();
-              System.out.println("Clearing queue");
-            }
-          }
-        }
+        // if(!this.moves.isEmpty()){
+        //   Vertex curNext = moves.peek();
+        //   if(moveMode >= 2 && moveMode <=4){
+        //     Record rec = records.get(curNext.x).get(curNext.y);
+        //     int muddy = rec.getC();
+        //     if(muddy == 1){
+        //       this.moves.clear();
+        //       System.out.println("Clearing queue");
+        //     }
+        //   }
+        // }
         // moveMode = 0, initial exploration
         // moveMode = 1, saw package or target
         // moveMode = 2, reached package or target -- looking for other one
         // moveMode = 3, saw the other one -- trying to reach target
         // moveMode = 4, reached the other one -- go to package to propose path
         // moveMode = 5, done -- just stay put
-        if(this.moves.isEmpty()){
+        if(this.curTarget == null || moves.isEmpty()) {
           List<Edge> curPath;
           String source = Integer.toString(loc.x) + "," + Integer.toString(loc.y);
           String target;
@@ -435,12 +460,18 @@ public class Player implements spy.sim.Player {
               default:
                   return new Point(0,0);
           }
+
+          this.moves = new LinkedList<Vertex>();
           for(Edge e : curPath){
             Vertex next = e.target;
             moves.add(next);
           }
+          this.curTarget = moves.getLast();
+          //System.err.println("updated target");
         }
+        //System.err.println(moves.size());
         Vertex nextMove = moves.poll();
+        //Vertex nextMove = curPath.get(0).target;
 
         return new Point(nextMove.x - loc.x, nextMove.y - loc.y);
     }

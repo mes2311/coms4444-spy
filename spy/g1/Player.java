@@ -185,10 +185,10 @@ public class Player implements spy.sim.Player {
             waitCounter += 1;
             if(toVisit == null){
               waitForCom = true;
-              System.out.println("Waiting for player");
+              //System.out.println("Waiting for player");
             }
             else{
-              System.out.println("Going to visit player " + lowestID);
+              //System.out.println("Going to visit player " + lowestID);
               String source = Integer.toString(loc.x)+","+Integer.toString(loc.y);
               String target = Integer.toString(toVisit.x)+","+Integer.toString(toVisit.y);
               List<Edge> curPath = djk.getDijkstraPath(source, target);
@@ -341,6 +341,9 @@ public class Player implements spy.sim.Player {
         if(ourPath.size()>1){
             return ourPath;
         }
+
+        return null;
+    }
 
 
     public List<Integer> getVotes(HashMap<Integer, List<Point>> paths)

@@ -210,6 +210,9 @@ public class Player implements spy.sim.Player {
 
     public List<Record> sendRecords(int id)
     {
+        if(this.isSpy){
+          return new ArrayList<Record>();
+        }
         ArrayList<Record> toSend = new ArrayList<Record>();
 
         if (Simulator.getElapsedT() - meetups.getOrDefault(id, 0) > minMeetWaitTime) {
@@ -232,23 +235,26 @@ public class Player implements spy.sim.Player {
 
     public void receiveRecords(int id, List<Record> records)
     {
-      waitCounter = 0;
-      waitForCom = false;
-        for(Record rec: records) {
-        	// record the data learned
-        	Point p = rec.getLoc();
-          Record record = this.records.get(p.x).get(p.y);
-          if (record == null || record.getC() != rec.getC() || record.getPT() != rec.getPT())
-          {
-              ArrayList<Observation> observations = new ArrayList<Observation>();
-              record = new Record(rec);
-              this.records.get(p.x).set(p.y, record);
+      if(!this.isSpy){
+        waitCounter = 0;
+        waitForCom = false;
+          for(Record rec: records) {
+            // record the data learned
+            Point p = rec.getLoc();
+            Record record = this.records.get(p.x).get(p.y);
+            if (record == null || record.getC() != rec.getC() || record.getPT() != rec.getPT())
+            {
+                ArrayList<Observation> observations = new ArrayList<Observation>();
+                record = new Record(rec);
+                this.records.get(p.x).set(p.y, record);
+            }
+            //map.get(p.x).set(p.y, new Record(p, status.getC(), status.getPT(), new ArrayList<Observation>()));
+            record.getObservations().add(new Observation(this.id, Simulator.getElapsedT()));
+            update(rec);
           }
-          //map.get(p.x).set(p.y, new Record(p, status.getC(), status.getPT(), new ArrayList<Observation>()));
-          record.getObservations().add(new Observation(this.id, Simulator.getElapsedT()));
-          update(rec);
-        }
+      }
     }
+
 
     private void update(Record record) {
     	Point p = record.getLoc();
